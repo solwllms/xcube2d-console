@@ -23,11 +23,22 @@ MyEngineSystem::MyEngineSystem() {
     function("clear", this, &MyEngineSystem::cmd_clear, "clear the console");
     function("help", this, &MyEngineSystem::cmd_help, "print this message");
     function("clearhistory", this, &MyEngineSystem::cmd_clearHistory, "clear the command history log");
+    function("quit", this, &MyEngineSystem::cmd_quit, "exit the game");
+    function("play", this, &MyEngineSystem::cmd_playSound, "play a sound");
 
     variable("con_height", 50);
 
     SDL_StopTextInput();
     print("Console initialised.", LINETYPE_SUCCESS);
+}
+
+void MyEngineSystem::cmd_playSound(const std::string& s) {
+    if (empty(s)) return;
+    XCube2Engine::getInstance()->getAudioEngine()->playSound(ResourceManager::getSound(s));
+}
+
+void MyEngineSystem::cmd_quit(const std::string&) {
+    XCube2Engine::quit();
 }
 
 void MyEngineSystem::print_direct(string line, LineType type) {
@@ -66,7 +77,7 @@ void MyEngineSystem::print(const std::string& message, LineType type) {
     }
 }
 
-void MyEngineSystem::render(GraphicsEngine* gfx) {
+void MyEngineSystem::render(shared_ptr<GraphicsEngine> gfx) {
     animFrame++;
 
     Dimension2i curWindowSize = gfx->getCurrentWindowSize();
@@ -150,7 +161,7 @@ void MyEngineSystem::render(GraphicsEngine* gfx) {
     }
 }
 
-void MyEngineSystem::update(EventEngine* event, GraphicsEngine* gfx) {
+void MyEngineSystem::update(std::shared_ptr<EventEngine> event, std::shared_ptr<GraphicsEngine> gfx) {
     int max = (gfx->getCurrentWindowSize().h * (getValue<float>("con_height") / 100));
     float targ = isOpen ? max : 0;
 
@@ -386,7 +397,7 @@ string MyEngineSystem::eval_loop(const std::string& expr) {
     //return token.c_str();
 }
 
-void MyEngineSystem::historyUp(EventEngine* event) {
+void MyEngineSystem::historyUp(std::shared_ptr<EventEngine> event) {
     int size = cmdHistory.size();
     if (size > 0 && cursorHistory < size - 1) {
         cursorHistory++;
@@ -394,7 +405,7 @@ void MyEngineSystem::historyUp(EventEngine* event) {
         event->setCursor(event->getInputString().length());
     }
 }
-void MyEngineSystem::historyDown(EventEngine* event) {
+void MyEngineSystem::historyDown(std::shared_ptr<EventEngine> event) {
     if (cursorHistory > -1) {
         cursorHistory--;
         if (cursorHistory == -1) event->clearInputString();
@@ -402,7 +413,7 @@ void MyEngineSystem::historyDown(EventEngine* event) {
         event->setCursor(event->getInputString().length());
     }
 }
-void MyEngineSystem::autocomplete(EventEngine* event) {
+void MyEngineSystem::autocomplete(std::shared_ptr<EventEngine> event) {
     string search = event->getInputString();
     if (inputCursor != search.length()) return;
     string match;

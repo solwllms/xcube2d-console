@@ -1,10 +1,11 @@
 #include "MyGame.h"
 
 MyGame::MyGame() : AbstractGame(), player(0, 0, 33, 56), camera(0, 0, 0, 0) {
-	gameFnt = ResourceManager::loadFont("res/fonts/arial.ttf", 72);
+	gameFnt = ResourceManager::loadFont("res/fonts/arial.ttf", 36);
 	gfx->useFont(gameFnt);
 	gfx->setVerticalSync(true);
 
+	// textures
 	ResourceManager::loadTexture("res/textures/tilesheet.png", magicPink);
 	ResourceManager::loadTexture("res/textures/water.png", SDL_COLOR_BLACK);
 	ResourceManager::loadTexture("res/textures/player.png", magicPink);
@@ -13,34 +14,29 @@ MyGame::MyGame() : AbstractGame(), player(0, 0, 33, 56), camera(0, 0, 0, 0) {
 	ResourceManager::loadTexture("res/textures/enemy.png", magicPink);
 	ResourceManager::loadTexture("res/textures/enemy_dead.png", magicPink);
 
-	for (int x = 0; x < LEVEL_SIZE; x++)
-	{
-		for (int y = 0; y < LEVEL_SIZE; y++)
-		{
-			level[x][y] = getRandom(0, 8) == 2 ? getRandom(1, 3) : 0;
-		}
-	}
+	// sounds
+	ResourceManager::loadSound("res/sounds/fire.wav");
+	ResourceManager::loadSound("res/sounds/break.wav");
+	ResourceManager::loadSound("res/sounds/win.wav");
+	ResourceManager::loadMP3("res/sounds/ambience.mp3");
 
 	mySystem->variable("window_title", "Sol Williams - Demo game", this, &MyGame::setTitle);
-
 	mySystem->variable("score", 0);
 	mySystem->variable("lives", 3);
-	mySystem->variable("num_keys", 5);
-
-	mySystem->variable("game_won", false);
-	mySystem->variable("game_win_msg", "YOU WON!");
-
-	mySystem->variable("player_speed", 1);
+	mySystem->variable("num_enemies", 5);
+	mySystem->variable("game_win", false, this, &MyGame::changeGameWin);
+	mySystem->variable("game_win_msg", "Game win!");
+	mySystem->variable("player_speed", 2);
+	mySystem->variable("bullet_speed", 10);
 	mySystem->variable("gui_color", SDL_COLOR_RED);
 
-    for (int i = 0; i < mySystem->getValue<int>("num_keys"); i++) {
-		spawnShip("");
-    }
+	mySystem->function("fire", this, &MyGame::fire);
+	mySystem->function("spawnship", this, &MyGame::spawnShip);
+	mySystem->function("newworld", this, &MyGame::generateWorld);
 
-	player.x = (gfx->getCurrentWindowSize().w - 66) / 2;
-	player.y = (gfx->getCurrentWindowSize().h - 113) / 2;
+	generateWorld("");
 
-	mySystem->print("World generated!", LINETYPE_SUCCESS);
+	sfx->playMP3(ResourceManager::getMP3("res/sounds/ambience.mp3"), -1);
 }
 
 MyGame::~MyGame() {
@@ -51,22 +47,76 @@ void MyGame::setTitle(const std::string& s) {
 	gfx.get()->setWindowTitle(s);
 }
 
+void MyGame::changeGameWin(const std::string& s) {
+	if(mySystem->getValue<bool>("game_win"))
+		sfx->playSound(ResourceManager::getSound("res/sounds/win.wav"));
+}
+
+void MyGame::generateWorld(const std::string& s) {
+
+	for (int x = 0; x < LEVEL_SIZE; x++)
+	{
+		for (int y = 0; y < LEVEL_SIZE; y++)
+		{
+			level[x][y] = getRandom(0, 8) == 2 ? getRandom(1, 3) : 0;
+		}
+	}
+
+	enemyShips.clear();
+	remainingShips = 0;
+	for (int i = 0; i < mySystem->getValue<int>("num_enemies"); i++) {
+		spawnShip("");
+	}
+
+	player.x = (gfx->getCurrentWindowSize().w - 66) / 2;
+	player.y = (gfx->getCurrentWindowSize().h - 113) / 2;
+
+	mySystem->print("World generated!", LINETYPE_SUCCESS);
+}
+
+
 void MyGame::spawnShip(const std::string& s) {
+
+	int x = getRandom(0, (LEVEL_SIZE - 3) * TILE_SIZE);
+	int y = getRandom(0, (LEVEL_SIZE - 3) * TILE_SIZE);
+
+	if (s.length() != 0) {
+		int space = s.find(' ');
+		if (space != std::string::npos) {
+			try {
+				x = std::stoi(s.substr(0, space));
+				y = std::stoi(s.substr(space + 1, s.size() - 1));
+			}
+			catch (...) {
+				mySystem->print("could not parse parameters.", LINETYPE_ERROR);
+			}
+		}
+		else {
+			mySystem->print("spawnship [X] [Y]");
+			return;
+		}
+	}
+
 	std::shared_ptr<EnemyShip> k = std::make_shared<EnemyShip>();
 	k->isAlive = true;
 	k->angle = getRandom(0, M_PI * 2);
-	k->rect = Rect(getRandom(0, (LEVEL_SIZE - 3) * TILE_SIZE), getRandom(0, (LEVEL_SIZE - 3) * TILE_SIZE), 33, 56);
+	k->rect = Rect(x, y, 33, 56);
 	enemyShips.push_back(k);
+
+	remainingShips++;
 
 	mySystem->print("spawned ship at (x: "+std::to_string(k->rect.x)+", y: "+ std::to_string(k->rect.y) + ")");
 }
 
 void MyGame::fire(const std::string& s) {
+	int speed = mySystem->getValue<int>("bullet_speed");
 	std::shared_ptr<Bullet> k = std::make_shared<Bullet>();
 	k->isAlive = true;
 	k->rect = Rect(player.x + ((float)player.w / 2), player.y + ((float)player.h / 2), 16, 16);
-	k->velocity = Vector2i(cos(angle) * -10, sin(angle) * -10);
+	k->velocity = Vector2i(velocity.x + (cos(angle) * -speed), velocity.y + (sin(angle) * -speed));
 	bullets.push_back(k);
+
+	sfx->playSound(ResourceManager::getSound("res/sounds/fire.wav"));
 
 	mySystem->print("spawned bullet at (x: " + std::to_string(k->rect.x) + ", y: " + std::to_string(k->rect.y) + ")");
 }
@@ -85,13 +135,13 @@ void MyGame::handleKeyEvents() {
 		}
 
 		if (eventSystem->isReleased(Key::UP)) {
-			mySystem->historyUp(eventSystem.get());
+			mySystem->historyUp(eventSystem);
 		}
 		if (eventSystem->isReleased(Key::DOWN)) {
-			mySystem->historyDown(eventSystem.get());
+			mySystem->historyDown(eventSystem);
 		}
 		if (eventSystem->isReleased(Key::TAB)) {
-			mySystem->autocomplete(eventSystem.get());
+			mySystem->autocomplete(eventSystem);
 		}
 		if (eventSystem->isReleased(Key::LEFT)) {
 			eventSystem->cursorLeft();
@@ -145,8 +195,8 @@ void MyGame::update() {
 
 	float bx = player.x;
 	float by = player.y;
-	player.x = std::max(0, std::min(LEVEL_SIZE * TILE_SIZE, player.x + velocity.x));
-	player.y = std::max(0, std::min(LEVEL_SIZE * TILE_SIZE, player.y + velocity.y));
+	player.x = std::max(0, std::min((LEVEL_SIZE * TILE_SIZE) - player.w , player.x + velocity.x));
+	player.y = std::max(0, std::min((LEVEL_SIZE * TILE_SIZE) - player.h, player.y + velocity.y));
 
 	for (auto key : enemyShips) {
 		if (key->rect.intersects(player)) {
@@ -162,9 +212,13 @@ void MyGame::update() {
 		if (!key->isAlive) continue;
 
 		for (auto ship : enemyShips) {
-			if (ship->rect.intersects(key->rect)) {
+			if (ship->isAlive && ship->rect.intersects(key->rect)) {
 				ship->isAlive = false;
 				key->isAlive = false;
+
+				sfx->playSound(ResourceManager::getSound("res/sounds/break.wav"));
+				mySystem->setValue("score", mySystem->getValue<int>("score") + 200);
+				remainingShips--;
 			}
 		}
 
@@ -172,10 +226,13 @@ void MyGame::update() {
 		key->rect.y += key->velocity.y;
 	}
 
+	if (remainingShips == 0 && !mySystem->getValue<bool>("game_win"))
+		mySystem->setValue("game_win", true);
+
 	velocity.x = 0;
     velocity.y = 0;
 
-	mySystem->update(eventSystem.get(), gfx.get());
+	mySystem->update(eventSystem, gfx);
 }
 
 void MyGame::render() {
@@ -235,12 +292,12 @@ void MyGame::renderUI() {
 
 	gfx->setDrawColor(mySystem->getValue<SDL_Color>("gui_color"));
 	std::string scoreStr = mySystem->getValue<std::string>("score");
-	gfx->drawText(scoreStr, 780 - scoreStr.length() * 50, 25);
+	gfx->drawText(scoreStr, 780 - scoreStr.length() * 50, camera.h - 100);
 
-	if (mySystem->getValue<bool>("game_won"))
+	if (mySystem->getValue<bool>("game_win"))
 		gfx->drawText(mySystem->getValue<std::string>("game_win_msg"), 250, 500);
 
-	mySystem->render(gfx.get());
+	mySystem->render(gfx);
 }
 
 EnemyShip::EnemyShip() : rect(0, 0, 0, 0) { }

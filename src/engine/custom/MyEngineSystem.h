@@ -72,8 +72,8 @@ class MyEngineSystem {
 		MyEngineSystem();
 
 		/* engine hooks */
-		void update(EventEngine*, GraphicsEngine*);
-		void render(GraphicsEngine*);
+		void update(std::shared_ptr<EventEngine>, std::shared_ptr<GraphicsEngine>);
+		void render(std::shared_ptr<GraphicsEngine>);
 		void toggle();
 		void submit();
 
@@ -211,9 +211,9 @@ class MyEngineSystem {
 		std::string eval(const std::string &);
 
 		/* command controls */
-		void historyUp(EventEngine*);
-		void historyDown(EventEngine*);
-		void autocomplete(EventEngine*);
+		void historyUp(std::shared_ptr<EventEngine>);
+		void historyDown(std::shared_ptr<EventEngine>);
+		void autocomplete(std::shared_ptr<EventEngine>);
 
 		/* variables */
 		bool getIsOpen() { return isOpen; }
@@ -225,6 +225,8 @@ class MyEngineSystem {
 		void MyEngineSystem::cmd_clear(const std::string&);
 		void MyEngineSystem::cmd_help(const std::string&);
 		void MyEngineSystem::cmd_clearHistory(const std::string&);
+		void MyEngineSystem::cmd_quit(const std::string&);
+		void MyEngineSystem::cmd_playSound(const std::string&);
 };
 
 #endif

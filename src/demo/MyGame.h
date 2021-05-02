@@ -42,6 +42,7 @@ class MyGame : public AbstractGame {
 		float angle;
 		Vector2i velocity;
 
+		int remainingShips;
 		std::vector<std::shared_ptr<EnemyShip>> enemyShips;
 
 		std::vector<std::shared_ptr<Bullet>> bullets;
@@ -54,9 +55,11 @@ class MyGame : public AbstractGame {
 		void drawTilemap(int x, int y, SDL_Texture* tilemap, int tile);
 
 		void setTitle(const std::string&);
-		void sayHi(const std::string&);
+		void changeGameWin(const std::string&);
+
 		void fire(const std::string&);
 		void spawnShip(const std::string&);
+		void generateWorld(const std::string&);
 
 	public:
         MyGame();
