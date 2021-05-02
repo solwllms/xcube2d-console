@@ -26,6 +26,7 @@ MyEngineSystem::MyEngineSystem() {
 
     variable("con_height", 50);
 
+    SDL_StopTextInput();
     print("Console initialised.", LINETYPE_SUCCESS);
 }
 

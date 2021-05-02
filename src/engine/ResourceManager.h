@@ -28,7 +28,7 @@ class ResourceManager {
 		* After load* functions, the loaded resource can also be retrieved
 		* by calling get* with appropriate filename
 		*/
-		static SDL_Texture * loadTexture(std::string fileName, SDL_Color transparent);
+		static SDL_Texture * loadTexture(std::string fileName, SDL_Color transparent = SDL_COLOR_BLACK);
 		static TTF_Font * loadFont(std::string fileName, const int & pointSize);
 		static Mix_Chunk * loadSound(std::string fileName);
 		static Mix_Music * loadMP3(std::string fileName);

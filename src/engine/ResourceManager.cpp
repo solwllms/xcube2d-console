@@ -12,7 +12,8 @@ SDL_Texture * ResourceManager::loadTexture(std::string file, SDL_Color trans) {
 	if (nullptr == surf)
 		throw EngineException(IMG_GetError(), file);
 
-	SDL_SetColorKey(surf, SDL_TRUE, SDL_MapRGB(surf->format, trans.r, trans.g, trans.b));
+	bool key = (trans.r == trans.g) && (trans.r == trans.b);
+	SDL_SetColorKey(surf, key ? SDL_FALSE : SDL_TRUE, SDL_MapRGB(surf->format, trans.r, trans.g, trans.b));
 	
 	texture = GFX::createTextureFromSurface(surf);
 	if (nullptr == texture)
