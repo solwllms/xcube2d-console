@@ -52,7 +52,7 @@ class MyEngineSystem {
 
 		TTF_Font* consoleFnt;
 
-		bool isOpen;
+		bool isOpen = false;
 		int consoleY = 0;
 		int consoleScroll = 0;
 		int inputCursor = 0;
