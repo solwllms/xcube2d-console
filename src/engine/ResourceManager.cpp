@@ -20,6 +20,7 @@ SDL_Texture * ResourceManager::loadTexture(std::string file, SDL_Color trans) {
 
 	SDL_FreeSurface(surf);
 
+	textures[file] = texture;
 	return texture;
 }
 
