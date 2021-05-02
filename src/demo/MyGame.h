@@ -4,7 +4,7 @@
 #include "../engine/AbstractGame.h"
 
 struct EnemyShip {
-	Rect rect;
+	Rectangle2f rect;
 	float angle;
 	bool isAlive;
 
@@ -12,7 +12,7 @@ struct EnemyShip {
 };
 
 struct Bullet {
-	Rect rect;
+	Rectangle2f rect;
 	Vector2i velocity;
 	bool isAlive;
 
@@ -38,9 +38,10 @@ class MyGame : public AbstractGame {
 		int frame = 0;
 		Rect camera;
 
-		Rect player;
-		float angle;
-		Vector2i velocity;
+		Rectangle2f player;
+		float targ_angle = 0;
+		float angle = 0;
+		Vector2f velocity;
 
 		int remainingShips;
 		std::vector<std::shared_ptr<EnemyShip>> enemyShips;
@@ -52,7 +53,7 @@ class MyGame : public AbstractGame {
 		void render();
 		void renderUI();
 
-		void drawTilemap(int x, int y, SDL_Texture* tilemap, int tile);
+		void drawTilemap(int x, int y, SDL_Texture* tilemap, int tile, int scroll_offset = 0);
 
 		void setTitle(const std::string&);
 		void changeGameWin(const std::string&);

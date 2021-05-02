@@ -20,16 +20,22 @@ MyGame::MyGame() : AbstractGame(), player(0, 0, 33, 56), camera(0, 0, 0, 0) {
 	ResourceManager::loadSound("res/sounds/win.wav");
 	ResourceManager::loadMP3("res/sounds/ambience.mp3");
 
+	// variables
 	mySystem->variable("window_title", "Sol Williams - Demo game", this, &MyGame::setTitle);
+	mySystem->variable("gui_color", SDL_COLOR_WHITE);
+
 	mySystem->variable("score", 0);
 	mySystem->variable("lives", 3);
 	mySystem->variable("num_enemies", 5);
+
 	mySystem->variable("game_win", false, this, &MyGame::changeGameWin);
 	mySystem->variable("game_win_msg", "Game win!");
-	mySystem->variable("player_speed", 2);
-	mySystem->variable("bullet_speed", 10);
-	mySystem->variable("gui_color", SDL_COLOR_RED);
 
+	mySystem->variable("player_speed", 2);
+	mySystem->variable("player_acceleration", 1);
+	mySystem->variable("bullet_speed", 10);
+
+	// functions
 	mySystem->function("fire", this, &MyGame::fire);
 	mySystem->function("spawnship", this, &MyGame::spawnShip);
 	mySystem->function("newworld", this, &MyGame::generateWorld);
@@ -58,7 +64,7 @@ void MyGame::generateWorld(const std::string& s) {
 	{
 		for (int y = 0; y < LEVEL_SIZE; y++)
 		{
-			level[x][y] = getRandom(0, 8) == 2 ? getRandom(1, 3) : 0;
+			level[x][y] = getRandom(0, 8) == 2 ? getRandom(1, 6) : 0;
 		}
 	}
 
@@ -100,7 +106,7 @@ void MyGame::spawnShip(const std::string& s) {
 	std::shared_ptr<EnemyShip> k = std::make_shared<EnemyShip>();
 	k->isAlive = true;
 	k->angle = getRandom(0, M_PI * 2);
-	k->rect = Rect(x, y, 33, 56);
+	k->rect = Rectangle2f(x, y, 33, 56);
 	enemyShips.push_back(k);
 
 	remainingShips++;
@@ -112,7 +118,7 @@ void MyGame::fire(const std::string& s) {
 	int speed = mySystem->getValue<int>("bullet_speed");
 	std::shared_ptr<Bullet> k = std::make_shared<Bullet>();
 	k->isAlive = true;
-	k->rect = Rect(player.x + ((float)player.w / 2), player.y + ((float)player.h / 2), 16, 16);
+	k->rect = Rectangle2f(player.x + ((float)player.w / 2), player.y + ((float)player.h / 2), 16, 16);
 	k->velocity = Vector2i(velocity.x + (cos(angle) * -speed), velocity.y + (sin(angle) * -speed));
 	bullets.push_back(k);
 
@@ -122,7 +128,8 @@ void MyGame::fire(const std::string& s) {
 }
 
 void MyGame::handleKeyEvents() {
-	int speed = mySystem->getValue<int>("player_speed");
+	float speed = mySystem->getValue<float>("player_speed");
+	float acc = mySystem->getValue<float>("player_acceleration") / 10;
 
 	if (eventSystem->isReleased(Key::CONSOLE)) {
 		mySystem->toggle();
@@ -154,49 +161,64 @@ void MyGame::handleKeyEvents() {
 	}
 
 	if (eventSystem->isPressed(Key::W)) {
-		velocity.y = -speed;
+		velocity.y += -acc;
 	}
-
 	if (eventSystem->isPressed(Key::S)) {
-		velocity.y = speed;
+		velocity.y += acc;
 	}
-
 	if (eventSystem->isPressed(Key::A)) {
-		velocity.x = -speed;
+		velocity.x += -acc;
 	}
-
 	if (eventSystem->isPressed(Key::D)) {
-		velocity.x = speed;
+		velocity.x += acc;
 	}
+	velocity.x = std::max(-speed, std::min(speed, velocity.x));
+	velocity.y = std::max(-speed, std::min(speed, velocity.y));
+
+	//velocity.x = 0;
+	if (velocity.x > 0) velocity.x -= 0.05;
+	else if (velocity.x < 0)  velocity.x += 0.05;
+	if (abs(velocity.x) < 0.05) velocity.x = 0;
+	//velocity.x -= 1;
+
+	//velocity.y = 0;
+	if (velocity.y > 0) velocity.y -= 0.05;
+	else if (velocity.y < 0) velocity.y += 0.05;
+	if (abs(velocity.y) < 0.05) velocity.y = 0;
 
 	if (eventSystem->isReleased(Key::SPACE)) {
 		fire("");
 	}
 }
 
-float dot(Vector2f a, Vector2f b)  //calculates dot product of a and b
-{
-	return a.x * b.x + a.y * b.y;
-}
-
-float mag(Vector2f a)  //calculates magnitude of a
+float mag(Vector2f a)
 {
 	return std::sqrt(a.x * a.x + a.y * a.y);
+}
+
+float dot(Vector2f a, Vector2f b)
+{
+	return a.x * b.x + a.y * b.y;
 }
 
 void MyGame::update() {
 
 	Point2 mouse = eventSystem->getMousePos();
 	Vector2f diff = { player.x + ((float)player.w / 2) - camera.x - mouse.x, player.y + ((float)player.h / 2) - camera.y - mouse.y };
-	angle = atan2(diff.y, diff.x);
+	targ_angle = atan2(diff.y, diff.x);
+
+	float dtheta = targ_angle - angle;
+	if (dtheta > M_PI) angle += 2 * M_PI;
+	else if (dtheta < -M_PI) angle -= 2 * M_PI;
+	angle += (targ_angle - angle) * 0.025;
 
 	camera.w = gfx->getCurrentWindowSize().w;
 	camera.h = gfx->getCurrentWindowSize().h;
 
 	float bx = player.x;
 	float by = player.y;
-	player.x = std::max(0, std::min((LEVEL_SIZE * TILE_SIZE) - player.w , player.x + velocity.x));
-	player.y = std::max(0, std::min((LEVEL_SIZE * TILE_SIZE) - player.h, player.y + velocity.y));
+	player.x = (int)std::max((float)0, std::min((LEVEL_SIZE * TILE_SIZE) - player.w , player.x + velocity.x));
+	player.y = (int)std::max((float)0, std::min((LEVEL_SIZE * TILE_SIZE) - player.h, player.y + velocity.y));
 
 	for (auto key : enemyShips) {
 		if (key->rect.intersects(player)) {
@@ -205,8 +227,8 @@ void MyGame::update() {
 		}
 	}
 
-	camera.x = std::max(0, std::min((LEVEL_SIZE * TILE_SIZE) - camera.w, player.x - ((camera.w - player.w) / 2)));
-	camera.y = std::max(0, std::min((LEVEL_SIZE * TILE_SIZE) - camera.h, player.y - ((camera.h - player.h) / 2)));
+	camera.x = std::max((float)0, std::min((float)(LEVEL_SIZE * TILE_SIZE) - camera.w, player.x - ((camera.w - player.w) / 2)));
+	camera.y = std::max((float)0, std::min((float)(LEVEL_SIZE * TILE_SIZE) - camera.h, player.y - ((camera.h - player.h) / 2)));
 
 	for (auto key : bullets) {
 		if (!key->isAlive) continue;
@@ -229,16 +251,13 @@ void MyGame::update() {
 	if (remainingShips == 0 && !mySystem->getValue<bool>("game_win"))
 		mySystem->setValue("game_win", true);
 
-	velocity.x = 0;
-    velocity.y = 0;
-
 	mySystem->update(eventSystem, gfx);
 }
 
 void MyGame::render() {
 	frame_timer++;
 	frame = frame_timer / 15;
-	if (frame_timer == 60) frame_timer = 0;
+	if (frame_timer == 120) frame_timer = 0;
 
 	auto tilemap = ResourceManager::getTexture("res/textures/tilesheet.png");
 	auto watermap = ResourceManager::getTexture("res/textures/water.png");
@@ -247,39 +266,42 @@ void MyGame::render() {
 		for (int y = 0; y < LEVEL_SIZE; y++)
 		{
 			int tile = level[x][y];
-			drawTilemap(x, y, watermap, frame % 2);
+			drawTilemap(x, y, watermap, 0, frame_timer % 64);
 			if(tile != 0) drawTilemap(x, y, tilemap, tile);
 		}
 	}
 
 	gfx->setDrawColor(mySystem->getValue<SDL_Color>("key_color"));
 	for (auto key : enemyShips) {
+		float angle = key->angle;
+		if(key->isAlive)
+			angle += 10 - (sin((float)(frame_timer % 90) / 10) / 10);
 
-		Rect shipRect = { key->rect.x, key->rect.y, key->rect.w, key->rect.h };
+		Rectangle2f shipRect = { key->rect.x, key->rect.y, key->rect.w, key->rect.h };
 		shipRect.x -= camera.x;
 		shipRect.y -= camera.y;
 		gfx->drawTexture(key->isAlive ? ResourceManager::getTexture("res/textures/enemy.png")
 			: ResourceManager::getTexture("res/textures/enemy_dead.png")
-			, 0, &shipRect.getSDLRect(), toDegrees(key->angle) + 90);
+			, 0, &shipRect.getSDLRect(), toDegrees(angle) + 90);
 	}
 
 	for (auto key : bullets) {
 		if (!key->isAlive) continue;
 
-		Rect bulletRect = { key->rect.x, key->rect.y, key->rect.w, key->rect.h };
+		Rectangle2f bulletRect = { key->rect.x, key->rect.y, key->rect.w, key->rect.h };
 		bulletRect.x -= camera.x;
 		bulletRect.y -= camera.y;
 		gfx->drawTexture(ResourceManager::getTexture("res/textures/canonball.png"), &bulletRect.getSDLRect());
 	}
 
-	Rect playerRect = { player.x - camera.x, player.y - camera.y, player.w, player.h };
+	Rectangle2f playerRect = { player.x - camera.x, player.y - camera.y, player.w, player.h };
 	gfx->drawTexture(ResourceManager::getTexture("res/textures/player.png"), 0, &playerRect.getSDLRect(), toDegrees(angle) + 90);
 }
 
-void MyGame::drawTilemap(int x, int y, SDL_Texture *tilemap, int tile) {
+void MyGame::drawTilemap(int x, int y, SDL_Texture *tilemap, int tile, int scroll_offset) {
 	int tx = tile % TILESHEET_X;
 	int ty = tile / TILESHEET_Y;
-	Rect srcRect = { tx * TILE_SIZE_SRC, ty * TILE_SIZE_SRC, TILE_SIZE_SRC, TILE_SIZE_SRC };
+	Rect srcRect = { (tx * TILE_SIZE_SRC) + scroll_offset, ty * TILE_SIZE_SRC, TILE_SIZE_SRC, TILE_SIZE_SRC };
 
 	Rect tileRect = { x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
 	tileRect.x -= camera.x;
