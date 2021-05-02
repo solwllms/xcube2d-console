@@ -10,7 +10,7 @@
 #include "GameMath.h"
 
 enum Key {
-	W, S, A, D, ESC, SPACE, UP, DOWN, LEFT, RIGHT, QUIT, LAST
+	W, S, A, D, ESC, SPACE, UP, DOWN, LEFT, RIGHT, QUIT, CONSOLE, RETURN, TAB, LAST
 };
 
 enum Mouse {
@@ -23,7 +23,11 @@ class EventEngine {
 		bool running;
 		SDL_Event event;
 		bool keys[Key::LAST];
+		bool keysLast[Key::LAST];
 		bool buttons[Mouse::BTN_LAST];
+
+		std::string inputString;
+		int cursor = 0;
 
 		void updateKeys(const SDL_Keycode &, bool);
 
@@ -37,7 +41,26 @@ class EventEngine {
 		void pollEvents();
 		
 		bool isPressed(Key);
+		bool isReleased(Key);
 		bool isPressed(Mouse);
+
+		std::string getInputString() { return inputString; }
+		void setInputString(std::string value) { inputString = value; }
+		void appendInputString(std::string value) { inputString += value; }
+		void clearInputString() { inputString = ""; }
+
+		void cursorLeft() {
+			if (cursor > 0) {
+				cursor--;
+			}
+		}
+		void cursorRight() {
+			if (inputString.length() > 0 && cursor <= inputString.length() - 1) {
+				cursor++;
+			}
+		}
+		void setCursor(int value) { cursor = value; }
+		int getCursor() { return cursor; }
     
         /**
          * Software emulation of keypresses

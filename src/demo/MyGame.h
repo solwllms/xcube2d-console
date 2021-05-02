@@ -10,20 +10,21 @@ struct GameKey {
 
 class MyGame : public AbstractGame {
 	private:
+		TTF_Font* gameFnt;
 		Rect box;
 
 		Vector2i velocity;
 
 		std::vector<std::shared_ptr<GameKey>> gameKeys;
 
-		/* GAMEPLAY */
-		int score, numKeys, lives;
-		bool gameWon;
-
 		void handleKeyEvents();
 		void update();
 		void render();
 		void renderUI();
+
+		void setTitle(const std::string&);
+		void sayHi(const std::string&);
+
 	public:
         MyGame();
 		~MyGame();
