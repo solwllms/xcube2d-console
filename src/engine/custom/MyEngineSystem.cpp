@@ -466,8 +466,6 @@ string MyEngineSystem::eval_loop(const std::string& expr) {
         if (token[0] == '"') return token;
         return "";
     }
-
-    //return token.c_str();
 }
 
 void MyEngineSystem::historyUp(std::shared_ptr<EventEngine> event) {

@@ -34,7 +34,6 @@ class MyGame : public AbstractGame {
 
 		int level[LEVEL_SIZE][LEVEL_SIZE];
 
-		int frame_timer = 0;
 		int frame = 0;
 		Rect camera;
 
