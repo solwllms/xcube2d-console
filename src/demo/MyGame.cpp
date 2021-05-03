@@ -29,11 +29,14 @@ MyGame::MyGame() : AbstractGame(), player(0, 0, 33, 56), camera(0, 0, 0, 0) {
 	mySystem->variable("num_enemies", 5);
 
 	mySystem->variable("game_win", false, this, &MyGame::changeGameWin);
-	mySystem->variable("game_win_msg", "Game win!");
+	mySystem->variableStr("game_win_msg", "Game win!");
 
 	mySystem->variable("player_speed", 2);
 	mySystem->variable("player_acceleration", 1);
 	mySystem->variable("bullet_speed", 10);
+
+	mySystem->variableStr("player_tex", "res/textures/player.png");
+	mySystem->variableStr("enemy_tex", "res/textures/enemy.png");
 
 	// functions
 	mySystem->function("fire", this, &MyGame::fire);
@@ -273,14 +276,12 @@ void MyGame::render() {
 
 	gfx->setDrawColor(mySystem->getValue<SDL_Color>("key_color"));
 	for (auto key : enemyShips) {
-		float angle = key->angle;
-		if(key->isAlive)
-			angle += 10 - (sin((float)(frame_timer % 90) / 10) / 10);
+		float angle = key->angle + 10 - (sin((float)(frame_timer % 90) / 10) / 10);
 
 		Rectangle2f shipRect = { key->rect.x, key->rect.y, key->rect.w, key->rect.h };
 		shipRect.x -= camera.x;
 		shipRect.y -= camera.y;
-		gfx->drawTexture(key->isAlive ? ResourceManager::getTexture("res/textures/enemy.png")
+		gfx->drawTexture(key->isAlive ? ResourceManager::getTexture(mySystem->getValue<std::string>("enemy_tex"))
 			: ResourceManager::getTexture("res/textures/enemy_dead.png")
 			, 0, &shipRect.getSDLRect(), toDegrees(angle) + 90);
 	}
@@ -295,7 +296,7 @@ void MyGame::render() {
 	}
 
 	Rectangle2f playerRect = { player.x - camera.x, player.y - camera.y, player.w, player.h };
-	gfx->drawTexture(ResourceManager::getTexture("res/textures/player.png"), 0, &playerRect.getSDLRect(), toDegrees(angle) + 90);
+	gfx->drawTexture(ResourceManager::getTexture(mySystem->getValue<std::string>("player_tex")), 0, &playerRect.getSDLRect(), toDegrees(angle) + 90);
 }
 
 void MyGame::drawTilemap(int x, int y, SDL_Texture *tilemap, int tile, int scroll_offset) {

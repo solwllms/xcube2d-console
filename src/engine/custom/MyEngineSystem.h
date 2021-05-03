@@ -18,7 +18,8 @@ enum LineType {
 	LINETYPE_WARNING,
 	LINETYPE_ERROR,
 	LINETYPE_SUCCESS,
-	LINETYPE_SYSTEM
+	LINETYPE_SYSTEM,
+	LINETYPE_MAX
 };
 
 struct LineEntry {
@@ -58,6 +59,8 @@ class MyEngineSystem {
 		int inputCursor = 0;
 		int animFrame = 0;
 
+		bool userExec;
+
 		void print_direct(std::string, LineType = LINETYPE_INFO);
 
 		/* command history */
@@ -92,6 +95,12 @@ class MyEngineSystem {
 		/* variables */
 		// these must be included in this header file or we won't compile!
 #pragma region Console Variables
+		// used for pure string variables only
+		void variableStr(const std::string& name, const std::string& value)
+		{
+			registryVar[name].value = value;
+			registryVar[name].callback = NULL;
+		}
 		template <typename T>
 		void variable(const std::string& name, T default)
 		{
@@ -221,6 +230,8 @@ class MyEngineSystem {
 		/* commands */
 		void MyEngineSystem::cmd_setVariable(const std::string&);
 		void MyEngineSystem::cmd_getVariable(const std::string&);
+		void MyEngineSystem::cmd_if(const std::string&);
+		void MyEngineSystem::cmd_exec(const std::string&);
 		void MyEngineSystem::cmd_echo(const std::string&);
 		void MyEngineSystem::cmd_clear(const std::string&);
 		void MyEngineSystem::cmd_help(const std::string&);

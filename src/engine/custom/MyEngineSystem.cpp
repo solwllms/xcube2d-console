@@ -19,6 +19,8 @@ MyEngineSystem::MyEngineSystem() {
 
     function("set", this, &MyEngineSystem::cmd_setVariable, "set a variable to a value");
     function("value", this, &MyEngineSystem::cmd_getVariable, "echo the value of a variable");
+    function("if", this, &MyEngineSystem::cmd_if, "perfom a conditional command");
+    function("exec", this, &MyEngineSystem::cmd_exec, "executes a script file");
     function("echo", this, &MyEngineSystem::cmd_echo, "print a message to the console");
     function("clear", this, &MyEngineSystem::cmd_clear, "clear the console");
     function("help", this, &MyEngineSystem::cmd_help, "print this message");
@@ -27,6 +29,7 @@ MyEngineSystem::MyEngineSystem() {
     function("play", this, &MyEngineSystem::cmd_playSound, "play a sound");
 
     variable("con_height", 50);
+    variable("echo_mode", LINETYPE_INFO);
 
     SDL_StopTextInput();
     print("Console initialised.", LINETYPE_SUCCESS);
@@ -194,6 +197,8 @@ void MyEngineSystem::exec(const std::string& input, bool userInput) {
     std::string newline = ";";
     std::string line = input + newline;
 
+    userExec = userInput;
+
     size_t start = 0;
     size_t end = line.find(newline);
     while (end != std::string::npos)
@@ -215,7 +220,7 @@ void MyEngineSystem::exec(const std::string& input, bool userInput) {
         else {
             string value = eval(input);
             if (value.empty()) {
-                print("'" + cmd + "' is not a valid command.");
+                print("ERROR: '" + cmd + "' is not a valid command.", LINETYPE_ERROR);
                 return;
             }
             else print(value);
@@ -239,7 +244,7 @@ bool MyEngineSystem::callFunc(const std::string& functionName, const std::string
 
 // based-off of a tokeniser by xinaiz
 // https://stackoverflow.com/questions/34653318/split-a-string-by-but-ignore-text-inside-quotes-in-the-string-c-using-boos
-vector<string> tokenise(const string& str) {
+inline vector<string> tokenise(const string& str) {
 
     vector<string> v;
     bool flag_quote = false;
@@ -262,7 +267,7 @@ vector<string> tokenise(const string& str) {
     return v;
 }
 
-string as_string(double d) {
+inline string as_string(double d) {
     stringstream ss;
     ss << d;
     return ss.str();
@@ -289,8 +294,16 @@ string MyEngineSystem::eval_loop(const std::string& expr) {
         // variables
         if (token[0] == '$') {
             string var = token.substr(1, token.size() - 1);
-            if (hasVariable(var))
+            if (hasVariable(var)) {
                 token = getValue<string>(var);
+                try {
+                    double a = stod(token);
+                    return as_string(a);
+                }
+                catch (...) {
+                    return "\"" + token + "\"";
+                }
+            }
             else {
                 print("variable '" + var + "' not found.");
                 return "";
@@ -309,11 +322,13 @@ string MyEngineSystem::eval_loop(const std::string& expr) {
 
     if (token.length() == 1) return token;
 
+    bool flag_quote = false;
     for (int i = 0; i < token.length(); i++)
     {
         string token1 = token.substr(0, i);
         string token2 = token.substr(i + 1, token.length() - i - 1);
-        if (token[i] == ' ') { continue;  }
+        if (token[i] == '\"') flag_quote = flag_quote ? false : true;
+        if (token[i] == ' ' || flag_quote) { continue;  }
         else if (token[i] == '+')
         {
             try {
@@ -351,7 +366,9 @@ string MyEngineSystem::eval_loop(const std::string& expr) {
     {
         string token1 = token.substr(0, i);
         string token2 = token.substr(i + 1, token.length() - i - 1);
-        if (token[i] == '/')
+        if (token[i] == '\"') flag_quote = flag_quote ? false : true;
+        if (token[i] == ' ' || flag_quote) { continue; }
+        else if (token[i] == '/')
         {
             try {
                 e1 = stod(eval_loop(token1));
@@ -373,6 +390,62 @@ string MyEngineSystem::eval_loop(const std::string& expr) {
                 e1 = stod(eval_loop(token1));
                 e2 = stod(eval_loop(token2));
                 return as_string(e1 * e2);
+            }
+            catch (const std::invalid_argument&) {
+                //print("error: could not evaluate");
+                return "";
+            }
+            catch (const std::out_of_range&) {
+                //print("error: out of range");
+                return "";
+            }
+        }
+    }
+
+    for (int i = 0; i < token.length(); i++)
+    {
+        string token1 = token.substr(0, i);
+        string token2 = token.substr(i + 1, token.length() - i - 1);
+        if (token[i] == '\"') flag_quote = flag_quote ? false : true;
+        if (token[i] == ' ' || flag_quote) { continue; }
+        else if (token[i] == '=')
+        {
+            try {
+                e1 = stod(eval_loop(token1));
+                e2 = stod(eval_loop(token2));
+                return (e1 == e2) ? "1" : "0";
+            }
+            catch (const std::invalid_argument&) {
+                //print("error: could not evaluate");
+                return (token1 == token2) ? "1" : "0";
+            }
+            catch (const std::out_of_range&) {
+                //print("error: out of range");
+                return "";
+            }
+        }
+        else if (token[i] == '>')
+        {
+            try {
+                e1 = stod(eval_loop(token1));
+                e2 = stod(eval_loop(token2));
+                return (e1 > e2) ? "1" : "0";
+            }
+            catch (const std::invalid_argument&) {
+                //print("error: could not evaluate");
+                return "";
+            }
+            catch (const std::out_of_range&) {
+                //print("error: out of range");
+                return "";
+            }
+        }
+        else if (token[i] == '<')
+        {
+            try {
+                e1 = stod(eval_loop(token1));
+                e2 = stod(eval_loop(token2));
+                return (e1 < e2) ? "1" : "0";
             }
             catch (const std::invalid_argument&) {
                 //print("error: could not evaluate");
@@ -487,7 +560,6 @@ void MyEngineSystem::cmd_setVariable(const std::string& command) {
 
     string var;
     string value;
-    cmd.erase(remove(cmd.begin(), cmd.end(), '$'), cmd.end());
     int space = cmd.find(' ');
     if (space != string::npos) {
         var = cmd.substr(0, space);
@@ -504,9 +576,11 @@ void MyEngineSystem::cmd_setVariable(const std::string& command) {
         return;
     }
 
+    var.erase(remove(var.begin(), var.end(), '$'), var.end());
     setValue(var, value);
 
-    print("set $" + var + " to \"" + value + "\"");
+    if(userExec)
+        print("set $" + var + " to \"" + value + "\"");
 }
 
 void MyEngineSystem::cmd_getVariable(const std::string& command) {
@@ -522,6 +596,57 @@ void MyEngineSystem::cmd_getVariable(const std::string& command) {
     }
 }
 
+// https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+inline std::string trim(const std::string& s)
+{
+    auto wsfront = std::find_if_not(s.begin(), s.end(), [](int c) {return std::isspace(c); });
+    auto wsback = std::find_if_not(s.rbegin(), s.rend(), [](int c) {return std::isspace(c); }).base();
+    return (wsback <= wsfront ? std::string() : std::string(wsfront, wsback));
+}
+
+// from https://stackoverflow.com/questions/1894886/parsing-a-comma-delimited-stdstring
+inline vector<string> split(const std::string& phrase, char split) {
+    stringstream ss(phrase);
+    vector<string> result;
+
+    while (ss.good())
+    {
+        string substr;
+        getline(ss, substr, split);
+        substr = trim(substr);
+        result.push_back(substr);
+    }
+    
+    return result;
+}
+
+void MyEngineSystem::cmd_if(const std::string& command) {
+    if (command.empty()) {
+        print("if [CONDITION] [TRUE CMD] [ELSE CMD]");
+        return;
+    }
+
+    string condition, cmd_true, cmd_false;
+    vector<string> series = split(command, ',');
+    for (int i = 0; i < series.size(); i++)
+    {
+        if (series[i].empty()) continue;
+
+        if (condition.empty()) condition = series[i];
+        else if (cmd_true.empty()) cmd_true = series[i];
+        else if (cmd_false.empty()) cmd_false = series[i];
+    }
+
+    if (condition.empty() || cmd_true.empty()) {
+        print("if [CONDITION] [TRUE CMD] (ELSE CMD)");
+        return;
+    }
+
+    string result = eval(condition);
+    if (result != "0") exec(cmd_true, false);
+    else if(!cmd_false.empty()) exec(cmd_false, false);
+}
+
 void MyEngineSystem::cmd_echo(const std::string& command) {
     if(command.empty()) {
         print("echo [MESSAGE]");
@@ -534,7 +659,11 @@ void MyEngineSystem::cmd_echo(const std::string& command) {
         return;
     }
 
-    print(value);
+    LineType mode = LINETYPE_INFO;
+    int v = getValue<int>("echo_mode");
+    if (v >= 0 && v < LINETYPE_MAX)
+        mode = (LineType) v;
+    print(value, mode);
 }
 
 void MyEngineSystem::cmd_clear(const std::string& command) {
@@ -566,4 +695,23 @@ void MyEngineSystem::cmd_clearHistory(const std::string& command) {
     file.close();
 
     print("history cleared.");
+}
+
+void MyEngineSystem::cmd_exec(const std::string& command) {
+    if (command.empty()) {
+        print("exec [FILE]");
+        return;
+    }
+
+    std::string line;
+    std::ifstream file;
+    file.open(command);
+    if (file.is_open()) {
+        while (std::getline(file, line)) {
+            if (!line.empty()) {
+                exec(line, false);
+            }
+        }
+        file.close();
+    }
 }
