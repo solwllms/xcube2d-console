@@ -1,4 +1,4 @@
-#include "MyEngineSystem.h"
+﻿#include "MyEngineSystem.h"
 #include "../AbstractGame.h"
 #include <fstream>
 #include <iomanip>
@@ -61,6 +61,7 @@ void MyEngineSystem::print(const std::string& message, LineType type) {
     strftime(tstamp, sizeof(tstamp), "[%x %X] ", &curtime);
     auto line = tstamp + message + "\n";
 
+    // split for new line chars
     size_t start = 0;
     size_t end = line.find(newline);
     while (end != std::string::npos)
@@ -280,7 +281,7 @@ string MyEngineSystem::eval(const std::string& expr) {
 }
 
 
-// heavily modified code - but based off of concepts of
+// heavily modified code based off of concepts of Mustafa Yıldız
 // https://stackoverflow.com/questions/9329406/evaluating-arithmetic-expressions-from-string-in-c
 string MyEngineSystem::eval_loop(const std::string& expr) {
     double e1, e2;    
@@ -594,7 +595,7 @@ void MyEngineSystem::cmd_getVariable(const std::string& command) {
     }
 }
 
-// https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
+// by David G from https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 inline std::string trim(const std::string& s)
 {
     auto wsfront = std::find_if_not(s.begin(), s.end(), [](int c) {return std::isspace(c); });
@@ -602,7 +603,7 @@ inline std::string trim(const std::string& s)
     return (wsback <= wsfront ? std::string() : std::string(wsfront, wsback));
 }
 
-// from https://stackoverflow.com/questions/1894886/parsing-a-comma-delimited-stdstring
+// by Zoomulator from https://stackoverflow.com/questions/1894886/parsing-a-comma-delimited-stdstring
 inline vector<string> split(const std::string& phrase, char split) {
     stringstream ss(phrase);
     vector<string> result;

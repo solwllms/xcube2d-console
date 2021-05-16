@@ -159,22 +159,26 @@ void MyGame::handleKeyEvents() {
 		if (eventSystem->isReleased(Key::RIGHT)) {
 			eventSystem->cursorRight();
 		}
+	}
+	else {
 
-		return; // only do console input
+		if (eventSystem->isPressed(Key::W)) {
+			velocity.y += -acc;
+		}
+		if (eventSystem->isPressed(Key::S)) {
+			velocity.y += acc;
+		}
+		if (eventSystem->isPressed(Key::A)) {
+			velocity.x += -acc;
+		}
+		if (eventSystem->isPressed(Key::D)) {
+			velocity.x += acc;
+		}
+		if (eventSystem->isReleased(Key::SPACE)) {
+			fire("");
+		}
 	}
 
-	if (eventSystem->isPressed(Key::W)) {
-		velocity.y += -acc;
-	}
-	if (eventSystem->isPressed(Key::S)) {
-		velocity.y += acc;
-	}
-	if (eventSystem->isPressed(Key::A)) {
-		velocity.x += -acc;
-	}
-	if (eventSystem->isPressed(Key::D)) {
-		velocity.x += acc;
-	}
 	velocity.x = std::max(-speed, std::min(speed, velocity.x));
 	velocity.y = std::max(-speed, std::min(speed, velocity.y));
 
@@ -188,10 +192,6 @@ void MyGame::handleKeyEvents() {
 	if (velocity.y > 0) velocity.y -= 0.05;
 	else if (velocity.y < 0) velocity.y += 0.05;
 	if (abs(velocity.y) < 0.05) velocity.y = 0;
-
-	if (eventSystem->isReleased(Key::SPACE)) {
-		fire("");
-	}
 }
 
 float mag(Vector2f a)
@@ -206,6 +206,7 @@ float dot(Vector2f a, Vector2f b)
 
 void MyGame::update() {
 
+	// rotate player player
 	Point2 mouse = eventSystem->getMousePos();
 	Vector2f diff = { player.x + ((float)player.w / 2) - camera.x - mouse.x, player.y + ((float)player.h / 2) - camera.y - mouse.y };
 	targ_angle = atan2(diff.y, diff.x);
@@ -218,11 +219,13 @@ void MyGame::update() {
 	camera.w = gfx->getCurrentWindowSize().w;
 	camera.h = gfx->getCurrentWindowSize().h;
 
+	// try move player (fix within level)
 	float bx = player.x;
 	float by = player.y;
 	player.x = (int)std::max((float)0, std::min((LEVEL_SIZE * TILE_SIZE) - player.w , player.x + velocity.x));
 	player.y = (int)std::max((float)0, std::min((LEVEL_SIZE * TILE_SIZE) - player.h, player.y + velocity.y));
 
+	// only move to our new posiition if its not blocked
 	for (auto key : enemyShips) {
 		if (key->rect.intersects(player)) {
 			player.x = bx;
@@ -230,9 +233,11 @@ void MyGame::update() {
 		}
 	}
 
+	// fix camera within level
 	camera.x = std::max((float)0, std::min((float)(LEVEL_SIZE * TILE_SIZE) - camera.w, player.x - ((camera.w - player.w) / 2)));
 	camera.y = std::max((float)0, std::min((float)(LEVEL_SIZE * TILE_SIZE) - camera.h, player.y - ((camera.h - player.h) / 2)));
 
+	// tick bullets (for collision)
 	for (auto key : bullets) {
 		if (!key->isAlive) continue;
 
@@ -261,6 +266,7 @@ void MyGame::render() {
 	frame++;
 	if (frame == 11520) frame = 0; // 64 * 180
 
+	// draw world
 	auto tilemap = ResourceManager::getTexture("res/textures/tilesheet.png");
 	auto watermap = ResourceManager::getTexture("res/textures/water.png");
 	for (int x = 0; x < LEVEL_SIZE; x++)
@@ -273,6 +279,7 @@ void MyGame::render() {
 		}
 	}
 
+	// draw ships
 	for (auto key : enemyShips) {
 		Rectangle2f shipRect = { key->rect.x, key->rect.y, key->rect.w, key->rect.h };
 		shipRect.x -= camera.x;
@@ -282,6 +289,7 @@ void MyGame::render() {
 			, 0, &shipRect.getSDLRect(), toDegrees(key->angle + sin((float)(key->rect.x + frame) / 20) / 10) + 90);
 	}
 
+	// draw bullets
 	for (auto key : bullets) {
 		if (!key->isAlive) continue;
 
@@ -291,6 +299,7 @@ void MyGame::render() {
 		gfx->drawTexture(ResourceManager::getTexture("res/textures/canonball.png"), &bulletRect.getSDLRect());
 	}
 
+	// draw player
 	Rectangle2f playerRect = { player.x - camera.x, player.y - camera.y, player.w, player.h };
 	float playerAngle = angle + (sin((float)(player.x + frame) / 20) / 10);
 	gfx->drawTexture(ResourceManager::getTexture(mySystem->getValue<std::string>("player_tex")), 0, &playerRect.getSDLRect(), toDegrees(playerAngle) + 90);
