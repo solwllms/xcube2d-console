@@ -1,3 +1,8 @@
+xcube2d-console
+=======
+
+The original console functionality is contained within MyEngineSystem.cpp, MyEngineSystem.h, and requries some changes that were made to EventSystem.cpp and EventSystem.h.
+
 xcube2d
 =======
 
